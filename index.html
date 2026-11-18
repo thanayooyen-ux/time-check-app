@@ -13,52 +13,65 @@
         .green-gradient { background: linear-gradient(135deg, #006400 0%, #003300 100%); }
         .gold-text { color: #d4af37; }
         
-        /* Modal Animation */
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+
+        /* Timer Glow */
+        .timer-glow { text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+        .timer-glow-red { text-shadow: 0 0 10px rgba(248, 113, 113, 0.8); }
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
 
-    <!-- Header -->
-    <header class="w-full max-w-md flex justify-between items-center mb-6 pt-2">
+    <!-- Header & Language Switcher -->
+    <header class="w-full max-w-md flex justify-between items-center mb-4 pt-2">
         <div class="flex items-center gap-2">
             <i class="fa-regular fa-clock text-red-500 text-xl"></i>
-            <h1 class="text-lg font-semibold tracking-wide">ระบบบันทึกเวลาจุดปฏิบัติงาน</h1>
+            <h1 id="appTitle" class="text-sm font-semibold tracking-wide" data-i18n="appTitle">ระบบบันทึกเวลาจุดปฏิบัติงาน</h1>
         </div>
-        <button onclick="openAdminAuth()" class="p-2 text-gray-500 hover:gold-text transition-colors">
-            <i class="fa-solid fa-lock"></i>
-        </button>
+        <div class="flex items-center gap-3">
+            <div class="flex gap-1 text-xs bg-[#2a2a2a] p-1 rounded-lg border border-gray-700">
+                <button onclick="changeLang('th')" id="btnLangTH" class="px-2 py-1 rounded text-white bg-red-900 font-bold">TH</button>
+                <button onclick="changeLang('zh')" id="btnLangZH" class="px-2 py-1 rounded text-gray-400 hover:text-white transition-colors">CN</button>
+                <button onclick="changeLang('en')" id="btnLangEN" class="px-2 py-1 rounded text-gray-400 hover:text-white transition-colors">EN</button>
+            </div>
+            <button onclick="openAdminAuth()" class="p-2 text-gray-500 hover:gold-text transition-colors">
+                <i class="fa-solid fa-lock"></i>
+            </button>
+        </div>
     </header>
 
     <!-- Main Scanner Card -->
     <main class="w-full max-w-md glass-panel rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-        <!-- Decorative top glow -->
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50"></div>
 
-        <div class="mb-6">
+        <div class="mb-5">
             <div class="flex justify-between items-end mb-2">
-                <label class="text-sm text-gray-400">รหัสพนักงาน / ชื่อ (Employee ID / Name)</label>
+                <label class="text-sm text-gray-400" data-i18n="inputLabel">รหัสพนักงาน / ชื่อ</label>
                 <div class="text-[10px] text-blue-400 flex items-center gap-1">
-                    <i class="fa-solid fa-fingerprint"></i> Protected by WebAuthn
+                    <i class="fa-solid fa-fingerprint"></i> Protected
                 </div>
             </div>
-            <!-- Input Name -->
             <div class="relative">
-                <input type="text" id="employeeName" placeholder="กรอกรหัส หรือ ชื่อพนักงาน..." 
+                <input type="text" id="employeeName" placeholder="กรอกรหัส หรือ ชื่อพนักงาน..." data-i18n-ph="inputPlaceholder"
                        class="w-full bg-[#2a2a2a] text-white border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-red-500 transition-colors">
                 <i id="lockIcon" class="fa-solid fa-lock absolute right-4 top-4 text-gray-500 hidden"></i>
             </div>
-            <p id="nameLockedMsg" class="text-xs text-green-400 mt-2 hidden"><i class="fa-solid fa-circle-check"></i> ระบบจำชื่ออุปกรณ์นี้แล้ว</p>
+            <p id="nameLockedMsg" class="text-xs text-green-400 mt-2 hidden" data-i18n="lockMsg"><i class="fa-solid fa-circle-check"></i> ระบบจำชื่ออุปกรณ์นี้แล้ว</p>
+        </div>
+
+        <!-- Live Timer Display (Hidden by default) -->
+        <div id="liveTimerContainer" class="hidden mb-5 bg-[#1a1a1a] border border-gray-700 rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-400 mb-1" data-i18n="timerLabel">กำลังจับเวลาออกนอกพื้นที่</p>
+            <div id="liveTimerText" class="text-4xl font-bold tracking-wider text-green-400 timer-glow font-mono">00:00</div>
         </div>
 
         <div class="flex flex-col gap-4">
             <button onclick="prepareLog('out')" class="red-gradient w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_15px_rgba(139,0,0,0.4)] active:scale-95 transition-transform flex justify-center items-center gap-2">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i> บันทึกเวลาออก
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="btnOut">บันทึกเวลาออก</span>
             </button>
-
             <button onclick="prepareLog('in')" class="green-gradient w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_15px_rgba(0,100,0,0.4)] active:scale-95 transition-transform flex justify-center items-center gap-2">
-                <i class="fa-solid fa-house"></i> บันทึกเวลาเข้า
+                <i class="fa-solid fa-house"></i> <span data-i18n="btnIn">บันทึกเวลาเข้า</span>
             </button>
         </div>
     </main>
@@ -66,17 +79,16 @@
     <!-- History Preview -->
     <section class="w-full max-w-md mt-6 glass-panel rounded-2xl p-5">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-sm font-semibold text-gray-300"><i class="fa-regular fa-clipboard"></i> ประวัติการเข้า-ออก (ล่าสุด)</h2>
-            <span id="currentDateDisplay" class="text-xs text-gray-500"></span>
+            <h2 class="text-sm font-semibold text-gray-300"><i class="fa-regular fa-clipboard"></i> <span data-i18n="historyTitle">ประวัติการเข้า-ออก (ล่าสุด)</span></h2>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead class="text-xs text-gray-400 border-b border-gray-700">
                     <tr>
-                        <th class="pb-2 font-medium">รหัส/ชื่อ</th>
-                        <th class="pb-2 font-medium">เวลาออก</th>
-                        <th class="pb-2 font-medium">เวลาเข้า</th>
-                        <th class="pb-2 font-medium text-right">รวมเวลา</th>
+                        <th class="pb-2 font-medium" data-i18n="thName">รหัส/ชื่อ</th>
+                        <th class="pb-2 font-medium" data-i18n="thOut">เวลาออก</th>
+                        <th class="pb-2 font-medium" data-i18n="thIn">เวลาเข้า</th>
+                        <th class="pb-2 font-medium text-right" data-i18n="thTotal">รวมเวลา</th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody" class="divide-y divide-gray-800 text-gray-300">
@@ -92,22 +104,22 @@
         <div class="modal-container bg-[#1a1a1a] w-full max-w-sm mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto border border-gray-700">
             <div class="modal-content py-6 text-left px-6">
                 <div class="flex justify-between items-center pb-3">
-                    <p class="text-xl font-bold text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> ข้อตกลงการบันทึกเวลา</p>
+                    <p class="text-xl font-bold text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> <span data-i18n="modalTitle">ข้อตกลงการบันทึกเวลา</span></p>
                 </div>
-                <p class="text-sm text-gray-300 my-4 leading-relaxed bg-red-950/30 p-3 rounded-lg border border-red-900/50">
+                <p class="text-sm text-gray-300 my-4 leading-relaxed bg-red-950/30 p-3 rounded-lg border border-red-900/50" data-i18n="modalDesc">
                     "แบบบันทึกสรุปการออกจากจุดปฏิบัติงานรายเดือน การบันทึกนี้มุ่งตรวจสอบการหนีงานหรือละทิ้งหน้าที่ในเวลาทำงาน ไม่ใช่การนับจำนวนครั้งการเข้าห้องน้ำอันเป็นความจำเป็นส่วนบุคคล"
                 </p>
                 <div class="flex justify-end pt-2 gap-3">
-                    <button onclick="closeModal('policyModal')" class="px-4 py-2 bg-transparent rounded-lg text-gray-400 hover:text-white transition-colors">ยกเลิก</button>
+                    <button onclick="closeModal('policyModal')" class="px-4 py-2 bg-transparent rounded-lg text-gray-400 hover:text-white transition-colors" data-i18n="btnCancel">ยกเลิก</button>
                     <button onclick="authenticateAndSave()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium flex items-center gap-2 transition-colors">
-                        <i class="fa-solid fa-face-viewfinder"></i> ยืนยันด้วยใบหน้า
+                        <i class="fa-solid fa-face-viewfinder"></i> <span data-i18n="btnConfirmFace">ยืนยันด้วยใบหน้า</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Admin Auth -->
+    <!-- Modal: Admin Auth (omitted for brevity, keep the same as before) -->
     <div id="adminAuthModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
         <div class="modal-overlay absolute w-full h-full bg-black/70 backdrop-blur-sm" onclick="closeModal('adminAuthModal')"></div>
         <div class="modal-container bg-[#1a1a1a] w-full max-w-sm mx-auto rounded-2xl shadow-2xl z-50 p-6 border border-gray-700 text-center">
@@ -125,31 +137,21 @@
                 <h3 class="text-xl font-bold text-yellow-500"><i class="fa-solid fa-crown"></i> Manager Dashboard</h3>
                 <button onclick="closeModal('adminDashboardModal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
-            
             <div class="flex gap-2 mb-4">
                 <button onclick="exportCSV()" class="bg-green-700 flex-1 hover:bg-green-600 py-2 rounded-lg font-medium text-white text-sm transition-colors"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
-                <button onclick="clearAllData()" class="bg-red-900 flex-1 hover:bg-red-800 py-2 rounded-lg font-medium text-white text-sm transition-colors"><i class="fa-solid fa-trash"></i> ล้างข้อมูลทั้งหมด</button>
+                <button onclick="clearAllData()" class="bg-red-900 flex-1 hover:bg-red-800 py-2 rounded-lg font-medium text-white text-sm transition-colors"><i class="fa-solid fa-trash"></i> <span data-i18n="adminBtnClear">ล้างข้อมูลทั้งหมด</span></button>
             </div>
-
-            <!-- ปุ่มฉุกเฉินสำหรับล้างชื่อที่จำไว้ -->
             <button onclick="resetSavedName()" class="bg-gray-800 border border-gray-600 hover:bg-gray-700 py-2 rounded-lg font-medium text-gray-300 text-sm mb-4 transition-colors">
-                <i class="fa-solid fa-user-xmark"></i> รีเซ็ตชื่อพนักงานที่จำไว้ในเครื่องนี้ (ปลดล็อกช่องชื่อ)
+                <i class="fa-solid fa-user-xmark"></i> <span data-i18n="adminBtnReset">รีเซ็ตชื่อพนักงานที่จำไว้ในเครื่องนี้</span>
             </button>
-
             <div class="flex-1 overflow-y-auto rounded-lg border border-gray-800 bg-[#121212]">
                 <table class="w-full text-xs text-left">
                     <thead class="text-gray-400 bg-gray-900 sticky top-0">
                         <tr>
-                            <th class="p-3">วันที่</th>
-                            <th class="p-3">ชื่อ</th>
-                            <th class="p-3">ออก</th>
-                            <th class="p-3">เข้า</th>
-                            <th class="p-3">รวมเวลา</th>
+                            <th class="p-3">วันที่</th><th class="p-3">ชื่อ</th><th class="p-3">ออก</th><th class="p-3">เข้า</th><th class="p-3">รวมเวลา</th>
                         </tr>
                     </thead>
-                    <tbody id="adminTableBody" class="divide-y divide-gray-800 text-gray-300">
-                        <!-- Admin data -->
-                    </tbody>
+                    <tbody id="adminTableBody" class="divide-y divide-gray-800 text-gray-300"></tbody>
                 </table>
             </div>
         </div>
@@ -162,12 +164,73 @@
     </div>
 
     <script>
-        // --- 1. ระบบจำชื่อพนักงาน (Auto-Remember) ---
+        // --- ระบบ 3 ภาษา (i18n) ---
+        const translations = {
+            th: {
+                appTitle: "ระบบบันทึกเวลาจุดปฏิบัติงาน", inputLabel: "รหัสพนักงาน / ชื่อ", inputPlaceholder: "กรอกรหัส หรือ ชื่อพนักงาน...", lockMsg: "ระบบจำชื่ออุปกรณ์นี้แล้ว",
+                timerLabel: "กำลังจับเวลาออกนอกพื้นที่", btnOut: "บันทึกเวลาออก", btnIn: "บันทึกเวลาเข้า", historyTitle: "ประวัติการเข้า-ออก (ล่าสุด)",
+                thName: "รหัส/ชื่อ", thOut: "เวลาออก", thIn: "เวลาเข้า", thTotal: "รวมเวลา", modalTitle: "ข้อตกลงการบันทึกเวลา",
+                modalDesc: '"แบบบันทึกสรุปการออกจากจุดปฏิบัติงานรายเดือน การบันทึกนี้มุ่งตรวจสอบการหนีงานหรือละทิ้งหน้าที่ในเวลาทำงาน ไม่ใช่การนับจำนวนครั้งการเข้าห้องน้ำอันเป็นความจำเป็นส่วนบุคคล"',
+                btnCancel: "ยกเลิก", btnConfirmFace: "ยืนยันด้วยใบหน้า", adminBtnClear: "ล้างข้อมูลทั้งหมด", adminBtnReset: "รีเซ็ตชื่อพนักงานที่จำไว้ในเครื่องนี้",
+                toastReqName: "กรุณากรอกรหัสหรือชื่อพนักงานก่อน", toastCancelFace: "ยกเลิกการสแกนใบหน้า", toastAuthFail: "เกิดข้อผิดพลาดในการยืนยันตัวตน",
+                toastOutSuccess: "บันทึกเวลาออกสำเร็จ", toastInSuccess: "บันทึกเวลาเข้าสำเร็จ", toastNoOut: "ไม่พบประวัติการบันทึกออกก่อนหน้านี้"
+            },
+            zh: {
+                appTitle: "工作区域计时系统", inputLabel: "员工号 / 姓名", inputPlaceholder: "输入员工号或姓名...", lockMsg: "设备已绑定此员工",
+                timerLabel: "离开区域计时中", btnOut: "离开记录 (Clock Out)", btnIn: "返回记录 (Clock In)", historyTitle: "最近出入记录",
+                thName: "姓名", thOut: "离开时间", thIn: "返回时间", thTotal: "总时长", modalTitle: "打卡协议",
+                modalDesc: '"每月离岗总结记录。本记录旨在检查工作时间内的擅离职守行为，并非限制个人必要的如厕次数。"',
+                btnCancel: "取消", btnConfirmFace: "人脸识别确认", adminBtnClear: "清除所有数据", adminBtnReset: "重置此设备的绑定姓名",
+                toastReqName: "请先输入员工号或姓名", toastCancelFace: "取消了人脸识别", toastAuthFail: "身份验证失败",
+                toastOutSuccess: "离开记录成功", toastInSuccess: "返回记录成功", toastNoOut: "未找到先前的离开记录"
+            },
+            en: {
+                appTitle: "Work Area Time Tracker", inputLabel: "Employee ID / Name", inputPlaceholder: "Enter ID or Name...", lockMsg: "Device remembered this name",
+                timerLabel: "Time Out Running", btnOut: "Clock Out", btnIn: "Clock In", historyTitle: "Recent History",
+                thName: "Name", thOut: "Time Out", thIn: "Time In", thTotal: "Duration", modalTitle: "Tracking Agreement",
+                modalDesc: '"Monthly area exit summary. This record aims to monitor absconding or abandoning duties during working hours, not counting restroom visits which are a personal necessity."',
+                btnCancel: "Cancel", btnConfirmFace: "Confirm with Face ID", adminBtnClear: "Clear All Data", adminBtnReset: "Reset saved name on this device",
+                toastReqName: "Please enter ID or Name first", toastCancelFace: "Face ID scan cancelled", toastAuthFail: "Authentication failed",
+                toastOutSuccess: "Clock out successful", toastInSuccess: "Clock in successful", toastNoOut: "No pending clock-out found"
+            }
+        };
+
+        let currentLang = localStorage.getItem('slk_lang') || 'th';
+
+        function changeLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('slk_lang', lang);
+            
+            // อัปเดต UI ปุ่มภาษา
+            ['th', 'zh', 'en'].forEach(l => {
+                const btn = document.getElementById(`btnLang${l.toUpperCase()}`);
+                if (l === lang) {
+                    btn.className = "px-2 py-1 rounded text-white bg-red-900 font-bold transition-colors";
+                } else {
+                    btn.className = "px-2 py-1 rounded text-gray-400 hover:text-white transition-colors";
+                }
+            });
+
+            // แปลภาษาข้อความทั้งหมด
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(translations[lang][key]) el.innerHTML = translations[lang][key];
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if(translations[lang][key]) el.placeholder = translations[lang][key];
+            });
+            renderHistory(); // รีเฟรชตารางเพื่ออัปเดตคำว่า นาที/วินาที (ถ้ามี)
+        }
+
+        // ฟังก์ชันช่วยดึงคำแปล
+        function t(key) { return translations[currentLang][key] || key; }
+
+        // --- ระบบจำชื่อพนักงาน ---
         const nameInput = document.getElementById('employeeName');
         const lockIcon = document.getElementById('lockIcon');
         const nameLockedMsg = document.getElementById('nameLockedMsg');
         
-        // เช็คว่าเคยมีชื่อบันทึกไว้ในเครื่องนี้ไหม
         function checkSavedName() {
             const savedName = localStorage.getItem('slk_saved_emp_name');
             if (savedName) {
@@ -178,107 +241,132 @@
                 lockIcon.classList.remove('hidden');
                 nameLockedMsg.classList.remove('hidden');
             } else {
+                nameInput.value = '';
                 nameInput.readOnly = false;
                 nameInput.classList.remove('bg-neutral-800', 'text-gray-500', 'cursor-not-allowed');
                 nameInput.classList.add('bg-[#2a2a2a]', 'text-white');
                 lockIcon.classList.add('hidden');
                 nameLockedMsg.classList.add('hidden');
             }
+            updateLiveTimer();
         }
-        
-        // รันเช็คชื่อตอนเปิดเว็บ
-        checkSavedName();
 
+        // --- ระบบจับเวลา Live Timer ---
+        let timerInterval;
+        function updateLiveTimer() {
+            const savedName = localStorage.getItem('slk_saved_emp_name');
+            const timerContainer = document.getElementById('liveTimerContainer');
+            const timerText = document.getElementById('liveTimerText');
+            
+            clearInterval(timerInterval); // เคลียร์ของเก่าก่อน
+            
+            if (!savedName) {
+                timerContainer.classList.add('hidden');
+                return;
+            }
+
+            const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
+            // หา record ที่ยังไม่ได้เข้า ของคนนี้
+            const activeLog = logs.slice().reverse().find(log => log.name === savedName && log.timeIn === '-');
+
+            if (activeLog) {
+                timerContainer.classList.remove('hidden');
+                timerInterval = setInterval(() => {
+                    const now = new Date().getTime();
+                    const diffMs = now - activeLog.timeOutRaw;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+                    
+                    timerText.innerText = `${String(diffMins).padStart(2, '0')}:${String(diffSecs).padStart(2, '0')}`;
+                    
+                    if (diffMins >= 10) {
+                        timerText.classList.remove('text-green-400', 'timer-glow');
+                        timerText.classList.add('text-red-500', 'timer-glow-red');
+                    } else {
+                        timerText.classList.add('text-green-400', 'timer-glow');
+                        timerText.classList.remove('text-red-500', 'timer-glow-red');
+                    }
+                }, 1000);
+            } else {
+                timerContainer.classList.add('hidden');
+            }
+        }
+
+        // --- ระบบทำงานหลัก ---
         let currentAction = '';
         const ADMIN_PIN = '9865';
 
-        document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toastMsg');
-            const toastIcon = document.getElementById('toastIcon');
-            
-            toastMsg.innerText = message;
+            document.getElementById('toastMsg').innerText = message;
             toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg transition-opacity duration-300 z-[100] flex items-center gap-2 border ${type === 'error' ? 'bg-red-900 border-red-700 text-white' : 'bg-green-900 border-green-700 text-white'}`;
-            toastIcon.className = type === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check';
-            
+            document.getElementById('toastIcon').className = type === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check';
             toast.style.opacity = '1';
             setTimeout(() => { toast.style.opacity = '0'; }, 3000);
         }
 
         function prepareLog(action) {
             const name = document.getElementById('employeeName').value.trim();
-            if (!name) {
-                showToast('กรุณากรอกรหัสหรือชื่อพนักงานก่อน', 'error');
-                return;
-            }
+            if (!name) { showToast(t('toastReqName'), 'error'); return; }
             currentAction = action;
             openModal('policyModal');
         }
 
-        // --- 2. ระบบ WebAuthn (จำลองการสแกนหน้า) ---
         async function authenticateAndSave() {
             closeModal('policyModal');
             try {
-                // จำลองการเรียก API สแกนหน้าของอุปกรณ์
-                const challenge = new Uint8Array(32);
-                window.crypto.getRandomValues(challenge);
-                
-                // ใช้ PublicKeyCredential API เพื่อกระตุ้น FaceID / TouchID ของเบราว์เซอร์
                 if(window.PublicKeyCredential) {
                     try {
-                        // สั่งให้หน้าต่างสแกนเด้งขึ้นมา
+                        const challenge = new Uint8Array(32);
+                        window.crypto.getRandomValues(challenge);
                         await navigator.credentials.create({
                             publicKey: {
                                 challenge: challenge,
-                                rp: { name: "Shoo Loong Kan App", id: window.location.hostname },
-                                user: { id: new Uint8Array(16), name: "employee", displayName: "Employee" },
+                                rp: { name: "SLK App", id: window.location.hostname },
+                                user: { id: new Uint8Array(16), name: "emp", displayName: "Emp" },
                                 pubKeyCredParams: [{ type: "public-key", alg: -7 }],
                                 authenticatorSelection: { userVerification: "required" },
                                 timeout: 60000
                             }
                         });
                     } catch (e) {
-                        // หากเบราว์เซอร์ไม่รองรับ หรือผู้ใช้กดยกเลิกสแกน
                         if(e.name === 'NotAllowedError') {
-                            showToast('ยกเลิกการสแกนใบหน้า ไม่สามารถบันทึกเวลาได้', 'error');
+                            showToast(t('toastCancelFace'), 'error');
                             return;
                         }
-                        // อนุโลมให้ผ่านกรณีทดสอบในระบบที่ไม่มีฮาร์ดแวร์รองรับเต็มรูปแบบ
                     }
                 }
-
-                // สแกนผ่านแล้ว -> ดำเนินการบันทึกข้อมูล
                 saveLog();
-
             } catch (err) {
-                showToast('เกิดข้อผิดพลาดในการยืนยันตัวตน', 'error');
+                showToast(t('toastAuthFail'), 'error');
             }
+        }
+
+        function formatDuration(diffMins, diffSecs) {
+            if(currentLang === 'th') return `${diffMins} นาที ${diffSecs} วินาที`;
+            if(currentLang === 'zh') return `${diffMins} 分 ${diffSecs} 秒`;
+            return `${diffMins} m ${diffSecs} s`;
         }
 
         function saveLog() {
             const name = document.getElementById('employeeName').value.trim();
             const now = new Date();
-            const timeString = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const dateString = now.toLocaleDateString('th-TH');
+            const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateString = now.toLocaleDateString('en-GB');
 
             let logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
 
             if (currentAction === 'out') {
-                logs.push({
-                    id: Date.now(),
-                    name: name,
-                    date: dateString,
-                    timeOut: timeString,
-                    timeOutRaw: now.getTime(),
-                    timeIn: '-',
-                    timeInRaw: null,
-                    duration: '-'
-                });
-                showToast(`บันทึกเวลาออกสำเร็จ: ${timeString}`);
+                // เช็คว่ากดออกซ้ำซ้อนไหม
+                const activeLog = logs.slice().reverse().find(log => log.name === name && log.timeIn === '-');
+                if(!activeLog) {
+                    logs.push({ id: Date.now(), name: name, date: dateString, timeOut: timeString, timeOutRaw: now.getTime(), timeIn: '-', timeInRaw: null, duration: '-' });
+                    showToast(`${t('toastOutSuccess')}: ${timeString}`);
+                } else {
+                    showToast('กำลังจับเวลาอยู่แล้ว / Timer is already running', 'error');
+                    return;
+                }
             } else if (currentAction === 'in') {
-                // หา record ล่าสุดที่ออกไปและยังไม่เข้า
                 const openLogIndex = logs.slice().reverse().findIndex(log => log.name === name && log.timeIn === '-');
                 if (openLogIndex !== -1) {
                     const actualIndex = logs.length - 1 - openLogIndex;
@@ -288,24 +376,25 @@
                     
                     logs[actualIndex].timeIn = timeString;
                     logs[actualIndex].timeInRaw = now.getTime();
-                    logs[actualIndex].duration = `${diffMins} นาที ${diffSecs} วินาที`;
-                    logs[actualIndex].isOvertime = diffMins > 10;
+                    logs[actualIndex].durationMins = diffMins; // เก็บค่าดิบไว้
+                    logs[actualIndex].durationSecs = diffSecs; 
+                    logs[actualIndex].isOvertime = diffMins >= 10;
                     
-                    showToast(`บันทึกเวลาเข้าสำเร็จ: ${timeString}`);
+                    showToast(`${t('toastInSuccess')}: ${timeString}`);
                 } else {
-                    showToast('ไม่พบประวัติการบันทึกออกก่อนหน้านี้', 'error');
+                    showToast(t('toastNoOut'), 'error');
                     return;
                 }
             }
 
             localStorage.setItem('slk_time_logs', JSON.stringify(logs));
             
-            // ** บันทึกชื่อลงเครื่องหลังจากใช้งานสำเร็จครั้งแรก **
             if (!localStorage.getItem('slk_saved_emp_name')) {
                 localStorage.setItem('slk_saved_emp_name', name);
-                checkSavedName(); // อัปเดต UI ทันที
+                checkSavedName();
             }
 
+            updateLiveTimer(); // สั่งรีเฟรช Live Timer ทันที
             renderHistory();
         }
 
@@ -313,115 +402,63 @@
             const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
-
-            // โชว์ 5 รายการล่าสุด
             const recentLogs = logs.slice(-5).reverse();
 
             recentLogs.forEach(log => {
                 const tr = document.createElement('tr');
                 const durationClass = log.isOvertime ? 'text-red-500 font-bold' : 'text-gray-300';
+                let displayDuration = log.duration;
+                if(log.timeIn !== '-') {
+                    displayDuration = formatDuration(log.durationMins, log.durationSecs);
+                }
+
                 tr.innerHTML = `
                     <td class="py-3 truncate max-w-[80px]">${log.name}</td>
                     <td class="py-3">${log.timeOut}</td>
                     <td class="py-3 text-green-400">${log.timeIn}</td>
-                    <td class="py-3 text-right ${durationClass}">${log.duration}</td>
+                    <td class="py-3 text-right ${durationClass}">${displayDuration}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // --- 3. ระบบ Admin & Modal ---
-        function openModal(modalID) {
-            document.getElementById(modalID).classList.remove('opacity-0', 'pointer-events-none');
-            document.body.classList.add('modal-active');
-        }
-
-        function closeModal(modalID) {
-            document.getElementById(modalID).classList.add('opacity-0', 'pointer-events-none');
-            document.body.classList.remove('modal-active');
-            if(modalID === 'adminAuthModal') {
-                document.getElementById('adminPin').value = '';
-            }
-        }
-
-        function openAdminAuth() {
-            openModal('adminAuthModal');
-            document.getElementById('adminPin').focus();
-        }
-
+        // --- Admin Code ---
+        function openModal(modalID) { document.getElementById(modalID).classList.remove('opacity-0', 'pointer-events-none'); document.body.classList.add('modal-active'); }
+        function closeModal(modalID) { document.getElementById(modalID).classList.add('opacity-0', 'pointer-events-none'); document.body.classList.remove('modal-active'); if(modalID === 'adminAuthModal') document.getElementById('adminPin').value = ''; }
+        function openAdminAuth() { openModal('adminAuthModal'); document.getElementById('adminPin').focus(); }
         function checkAdminPin() {
-            const pin = document.getElementById('adminPin').value;
-            if (pin === ADMIN_PIN) {
-                closeModal('adminAuthModal');
-                openModal('adminDashboardModal');
-                renderAdminTable();
-            } else {
-                showToast('รหัส PIN ไม่ถูกต้อง', 'error');
-            }
+            if (document.getElementById('adminPin').value === ADMIN_PIN) {
+                closeModal('adminAuthModal'); openModal('adminDashboardModal'); renderAdminTable();
+            } else { showToast('รหัส PIN ไม่ถูกต้อง / Incorrect PIN', 'error'); }
         }
-
         function renderAdminTable() {
             const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
             const tbody = document.getElementById('adminTableBody');
             tbody.innerHTML = '';
-
             logs.slice().reverse().forEach(log => {
                 const tr = document.createElement('tr');
-                const durationClass = log.isOvertime ? 'text-red-500 font-bold' : '';
-                tr.innerHTML = `
-                    <td class="p-3 border-b border-gray-800">${log.date}</td>
-                    <td class="p-3 border-b border-gray-800 text-yellow-500">${log.name}</td>
-                    <td class="p-3 border-b border-gray-800">${log.timeOut}</td>
-                    <td class="p-3 border-b border-gray-800 text-green-400">${log.timeIn}</td>
-                    <td class="p-3 border-b border-gray-800 ${durationClass}">${log.duration}</td>
-                `;
+                let displayDuration = log.timeIn !== '-' ? formatDuration(log.durationMins, log.durationSecs) : '-';
+                tr.innerHTML = `<td class="p-3 border-b border-gray-800">${log.date}</td><td class="p-3 border-b border-gray-800 text-yellow-500">${log.name}</td><td class="p-3 border-b border-gray-800">${log.timeOut}</td><td class="p-3 border-b border-gray-800 text-green-400">${log.timeIn}</td><td class="p-3 border-b border-gray-800 ${log.isOvertime ? 'text-red-500 font-bold' : ''}">${displayDuration}</td>`;
                 tbody.appendChild(tr);
             });
         }
-
         function exportCSV() {
             const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
-            if(logs.length === 0) {
-                showToast('ไม่มีข้อมูลให้ Export', 'error');
-                return;
-            }
-            
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // รองรับภาษาไทย
-            csvContent += "Date,Name,Time Out,Time In,Duration,Over 10 Mins\n";
-            
-            logs.forEach(log => {
-                csvContent += `${log.date},${log.name},${log.timeOut},${log.timeIn},${log.duration},${log.isOvertime ? 'YES' : 'NO'}\n`;
-            });
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `SLK_Time_Logs_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFFDate,Name,Time Out,Time In,Duration (Mins),Over 10 Mins\n";
+            logs.forEach(log => csvContent += `${log.date},${log.name},${log.timeOut},${log.timeIn},${log.durationMins || 0},${log.isOvertime ? 'YES' : 'NO'}\n`);
+            const link = document.createElement("a"); link.href = encodeURI(csvContent); link.download = `SLK_Time_Logs.csv`;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
-
         function clearAllData() {
-            if(confirm('คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการสแกนทั้งหมด? (ข้อมูลจะกู้คืนไม่ได้)')) {
-                localStorage.removeItem('slk_time_logs');
-                renderHistory();
-                renderAdminTable();
-                showToast('ล้างข้อมูลสำเร็จ');
-            }
+            if(confirm('ลบประวัติการสแกนทั้งหมด? / Clear all data?')) { localStorage.removeItem('slk_time_logs'); renderHistory(); renderAdminTable(); showToast('ล้างข้อมูลสำเร็จ'); updateLiveTimer(); }
         }
-
-        // ปุ่มปลดล็อกชื่อ (กรณีพนักงานพิมพ์ผิดครั้งแรก)
         function resetSavedName() {
-            if(confirm('ต้องการปลดล็อกช่องกรอกชื่อของมือถือเครื่องนี้ใช่หรือไม่?')) {
-                localStorage.removeItem('slk_saved_emp_name');
-                checkSavedName();
-                closeModal('adminDashboardModal');
-                showToast('ปลดล็อกชื่อสำเร็จ พนักงานสามารถกรอกชื่อใหม่ได้');
-            }
+            if(confirm('ปลดล็อกช่องกรอกชื่อ? / Reset saved name?')) { localStorage.removeItem('slk_saved_emp_name'); checkSavedName(); closeModal('adminDashboardModal'); showToast('ปลดล็อกชื่อสำเร็จ'); }
         }
 
         // Init
+        changeLang(currentLang);
+        checkSavedName();
         renderHistory();
     </script>
 </body>
