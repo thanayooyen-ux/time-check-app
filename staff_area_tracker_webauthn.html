@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกเวลาทำงาน & Biometrics</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
+                    },
+                    colors: {
+                        premium: {
+                            dark: '#0a0a0a',
+                            card: '#171717',
+                            border: '#262626',
+                            red: '#991b1b', // Red-800
+                            redHover: '#b91c1c', // Red-700
+                            accent: '#dc2626', // Red-600
+                            gold: '#d4af37', // Gold for Admin/Premium touches
+                            goldHover: '#b5952f'
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #171717; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+    </style>
+</head>
+<body class="bg-premium-dark text-gray-200 min-h-screen flex flex-col font-sans selection:bg-premium-red selection:text-white pb-10">
+
+    <!-- Header -->
+    <header class="bg-premium-card border-b border-premium-border py-4 px-6 shadow-md z-10 sticky top-0">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-premium-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h1 class="text-xl font-bold tracking-wide text-white">ระบบบันทึกเวลาจุดปฏิบัติงาน</h1>
+            </div>
+            
+            <!-- Admin Lock Icon -->
+            <button onclick="openAdminAuth()" class="text-premium-gold hover:text-white transition-colors p-2 rounded-full hover:bg-premium-border/50" title="Admin Dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- WebAuthn Status Message Box -->
+    <div class="max-w-4xl mx-auto w-full px-4 sm:px-6 mt-6">
+        <div id="statusBox" class="hidden rounded-xl p-4 border flex items-start gap-3 transition-all duration-300 shadow-lg">
+            <div id="statusIcon"></div>
+            <div class="flex-1">
+                <h4 id="statusTitle" class="font-bold text-sm"></h4>
+                <p id="statusMessage" class="text-sm mt-1"></p>
+            </div>
+            <button onclick="closeStatus()" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-grow w-full max-w-4xl mx-auto p-4 sm:p-6 flex flex-col gap-6 relative">
+        
+        <!-- ================= EMPLOYEE VIEW ================= -->
+        <div id="employeeView" class="flex flex-col gap-6 w-full animate-fade-in transition-opacity duration-300">
+            <!-- Tracker Card -->
+            <div class="bg-premium-card rounded-2xl border border-premium-border shadow-xl p-6 sm:p-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-premium-dark via-premium-accent to-premium-dark"></div>
+                
+                <div class="space-y-6">
+                    <!-- Input Section -->
+                    <div>
+                        <label for="empId" class="block text-sm font-medium text-gray-400 mb-2 flex justify-between items-center">
+                            <span>รหัสพนักงาน / ชื่อ (Employee ID / Name)</span>
+                            <span class="text-xs text-blue-400 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg>
+                                Protected by WebAuthn
+                            </span>
+                        </label>
+                        <input type="text" id="empId" placeholder="กรอกรหัส หรือ ชื่อพนักงาน..." 
+                               class="w-full bg-premium-dark border border-premium-border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-premium-accent focus:border-transparent transition-all placeholder-gray-600 text-lg">
+                        <p id="errorMsg" class="text-premium-accent text-sm mt-2 hidden">กรุณากรอกรหัสพนักงานหรือชื่อก่อนดำเนินการ</p>
+                    </div>
+
+                    <!-- Timer Display -->
+                    <div id="timerContainer" class="hidden flex flex-col items-center justify-center py-6 bg-premium-dark/50 rounded-xl border border-premium-border/50">
+                        <span class="text-sm text-gray-400 mb-2">เวลาที่อยู่นอกพื้นที่</span>
+                        <div id="timerDisplay" class="text-6xl sm:text-7xl font-mono font-bold tracking-wider text-white transition-colors duration-300">
+                            00:00
+                        </div>
+                        <span id="timerWarning" class="text-premium-accent text-sm mt-3 hidden font-medium animate-pulse">
+                            ⚠️ เกินเวลา 10 นาทีที่กำหนด
+                        </span>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button id="btnLeave" onclick="handleLeaveClick()" 
+                                class="w-full bg-premium-red hover:bg-premium-redHover text-white font-semibold text-lg py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 border border-red-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            บันทึกเวลาออก
+                        </button>
+                        
+                        <button id="btnReturn" onclick="handleReturnClick()" disabled
+                                class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-lg py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 border border-emerald-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            บันทึกเวลาเข้า
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Card (Today only) -->
+            <div class="bg-premium-card rounded-2xl border border-premium-border shadow-lg overflow-hidden flex flex-col">
+                <div class="p-4 sm:p-6 border-b border-premium-border flex justify-between items-center bg-premium-card/80">
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        ประวัติการเข้า-ออก (ล่าสุด)
+                    </h2>
+                    <span class="text-xs text-gray-500" id="todayDate"></span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-premium-dark/80 text-gray-400 text-sm">
+                                <th class="py-3 px-4 font-medium">รหัสพนักงาน/ชื่อ</th>
+                                <th class="py-3 px-4 font-medium">เวลาออก</th>
+                                <th class="py-3 px-4 font-medium">เวลาเข้า</th>
+                                <th class="py-3 px-4 font-medium text-right">รวมเวลา</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-premium-border text-gray-300 text-sm sm:text-base">
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-gray-500 italic">ยังไม่มีข้อมูลการบันทึก</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= ADMIN DASHBOARD VIEW ================= -->
+        <div id="adminView" class="hidden flex-col gap-6 w-full animate-fade-in">
+            
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span class="text-premium-gold">HR / Admin</span> Dashboard
+                </h2>
+                <button onclick="switchView('employee')" class="px-4 py-2 bg-premium-card border border-premium-border rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    กลับหน้าบันทึกเวลา
+                </button>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-premium-card border border-premium-border rounded-xl p-4 shadow-lg">
+                    <div class="text-gray-400 text-sm mb-1">ยอดรวมการออกนอกพื้นที่</div>
+                    <div class="text-2xl font-bold text-white" id="statTotal">0 <span class="text-sm font-normal text-gray-500">ครั้ง</span></div>
+                </div>
+                <div class="bg-premium-card border border-premium-border rounded-xl p-4 shadow-lg border-l-4 border-l-premium-accent">
+                    <div class="text-gray-400 text-sm mb-1">เกินเวลา (> 10 นาที)</div>
+                    <div class="text-2xl font-bold text-premium-accent" id="statWarning">0 <span class="text-sm font-normal text-gray-500">ครั้ง</span></div>
+                </div>
+                <button onclick="exportToCSV()" class="bg-premium-gold/10 border border-premium-gold/30 hover:bg-premium-gold/20 text-premium-gold rounded-xl p-4 shadow-lg flex flex-col items-center justify-center transition-colors group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="font-medium text-sm">Export to CSV</span>
+                </button>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-premium-card rounded-2xl border border-premium-border shadow-lg overflow-hidden flex flex-col">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-premium-dark text-premium-gold text-sm border-b border-premium-border">
+                                <th class="py-4 px-4 font-semibold">วันที่</th>
+                                <th class="py-4 px-4 font-semibold">ชื่อ / รหัสพนักงาน</th>
+                                <th class="py-4 px-4 font-semibold">เวลาออก</th>
+                                <th class="py-4 px-4 font-semibold">เวลาเข้า</th>
+                                <th class="py-4 px-4 font-semibold text-right">ระยะเวลา</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody" class="divide-y divide-premium-border text-gray-300 text-sm">
+                            <tr>
+                                <td colspan="5" class="py-10 text-center text-gray-500 italic">ไม่มีข้อมูลในระบบ</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="text-center text-xs text-gray-600 mt-2">
+                * ข้อมูลถูกบันทึกใน Local Storage ของอุปกรณ์นี้เท่านั้น
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Modal Overlay (Employee Agreement) -->
+    <div id="confirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-premium-card border border-premium-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 transform scale-95 transition-transform duration-300 overflow-hidden" id="modalContent">
+            
+            <div class="bg-premium-red px-6 py-4 flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="text-white font-bold text-lg">ประกาศ / ข้อตกลง</h3>
+            </div>
+            
+            <div class="p-6 sm:p-8">
+                <p class="text-gray-200 text-base leading-relaxed whitespace-pre-wrap font-medium">แบบบันทึกสรุปการออกจากจุดปฏิบัติงานรายเดือน <span class="text-premium-accent font-bold">การบันทึกนี้มุ่งตรวจสอบการหนีงานหรือละทิ้งหน้าที่ในเวลาทำงาน</span> ไม่ใช่การนับจำนวนครั้งการเข้าห้องน้ำอันเป็นความจำเป็นส่วนบุคคล</p>
+                
+                <div class="mt-8 flex flex-col sm:flex-row gap-3 sm:justify-end">
+                    <button onclick="closeModal()" class="px-5 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors font-medium">
+                        ยกเลิก
+                    </button>
+                    <button onclick="handleConfirmWithBiometrics()" id="btnConfirmModal" class="px-5 py-2.5 rounded-lg bg-premium-accent hover:bg-premium-red text-white transition-colors font-medium shadow-lg shadow-red-900/20 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg>
+                        ยืนยันด้วยใบหน้า / ลายนิ้วมือ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin PIN Modal -->
+    <div id="adminModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-premium-card border border-premium-gold/30 rounded-2xl shadow-2xl w-full max-w-sm mx-4 transform scale-95 transition-transform duration-300 p-8 flex flex-col items-center" id="adminModalContent">
+            
+            <div class="w-16 h-16 rounded-full bg-premium-gold/10 flex items-center justify-center mb-4 border border-premium-gold/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-premium-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            
+            <h3 class="text-white font-bold text-xl mb-1">Admin Access</h3>
+            <p class="text-gray-400 text-sm mb-6 text-center">กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบรายงาน</p>
+            
+            <input type="password" id="adminPin" placeholder="••••" maxlength="4"
+                   class="w-full bg-premium-dark border border-premium-border text-center tracking-[0.5em] rounded-xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-premium-gold focus:border-transparent transition-all text-2xl font-mono mb-4">
+            
+            <p id="adminError" class="text-premium-accent text-sm mb-4 hidden">รหัสผ่านไม่ถูกต้อง</p>
+            
+            <div class="flex w-full gap-3 mt-2">
+                <button onclick="closeAdminAuth()" class="flex-1 py-3 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-800 transition-colors font-medium">
+                    ยกเลิก
+                </button>
+                <button onclick="verifyAdminPin()" class="flex-1 py-3 rounded-xl bg-premium-gold hover:bg-premium-goldHover text-black transition-colors font-bold shadow-lg shadow-yellow-900/20">
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // --- State Management ---
+        let historyData = [];
+        let activeSession = null;
+        let timerInterval = null;
+        
+        // --- Elements: Views ---
+        const employeeView = document.getElementById('employeeView');
+        const adminView = document.getElementById('adminView');
+        
+        // --- Elements: Employee ---
+        const empInput = document.getElementById('empId');
+        const errorMsg = document.getElementById('errorMsg');
+        const btnLeave = document.getElementById('btnLeave');
+        const btnReturn = document.getElementById('btnReturn');
+        const timerContainer = document.getElementById('timerContainer');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerWarning = document.getElementById('timerWarning');
+        const confirmModal = document.getElementById('confirmModal');
+        const modalContent = document.getElementById('modalContent');
+        const historyTableBody = document.getElementById('historyTableBody');
+        const btnConfirmModal = document.getElementById('btnConfirmModal');
+        
+        // --- Elements: Admin ---
+        const adminModal = document.getElementById('adminModal');
+        const adminModalContent = document.getElementById('adminModalContent');
+        const adminPin = document.getElementById('adminPin');
+        const adminError = document.getElementById('adminError');
+        const adminTableBody = document.getElementById('adminTableBody');
+        
+        // --- Elements: Shared ---
+        const statusBox = document.getElementById('statusBox');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusIcon = document.getElementById('statusIcon');
+        
+        // --- Initialization ---
+        document.getElementById('todayDate').innerText = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // --- Local Storage Logic ---
+        function loadData() {
+            const savedData = localStorage.getItem('hrTrackerHistory');
+            if (savedData) {
+                try { historyData = JSON.parse(savedData); } 
+                catch(e) { historyData = []; }
+            }
+            
+            const savedSession = localStorage.getItem('hrActiveSession');
+            if (savedSession) {
+                try {
+                    activeSession = JSON.parse(savedSession);
+                    activeSession.leaveTime = new Date(activeSession.leaveTime); // convert back to Date
+                    restoreActiveSession();
+                } catch(e) {
+                    activeSession = null;
+                }
+            }
+            renderEmployeeHistory();
+        }
+
+        function saveData() {
+            localStorage.setItem('hrTrackerHistory', JSON.stringify(historyData));
+            if (activeSession) {
+                localStorage.setItem('hrActiveSession', JSON.stringify(activeSession));
+            } else {
+                localStorage.removeItem('hrActiveSession');
+            }
+        }
+
+        window.onload = function() {
+            loadData();
+        };
+
+        // --- Utility Functions ---
+        function formatTime(dateObj) {
+            return dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+        function formatDate(dateObj) {
+            return dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+        function formatDuration(totalSeconds) {
+            const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const s = (totalSeconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function showStatus(type, title, message) {
+            statusBox.classList.remove('hidden', 'bg-green-900/40', 'border-green-500/50', 'text-green-200', 'bg-red-900/40', 'border-red-500/50', 'text-red-200', 'bg-yellow-900/40', 'border-yellow-500/50', 'text-yellow-200');
+            
+            if (type === 'success') {
+                statusBox.classList.add('bg-green-900/40', 'border-green-500/50', 'text-green-200');
+                statusIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            } else if (type === 'error') {
+                statusBox.classList.add('bg-red-900/40', 'border-red-500/50', 'text-red-200');
+                statusIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            } else {
+                statusBox.classList.add('bg-yellow-900/40', 'border-yellow-500/50', 'text-yellow-200');
+                statusIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            }
+            statusTitle.innerText = title;
+            statusMessage.innerText = message;
+            
+            // Auto hide after 5 seconds
+            setTimeout(closeStatus, 5000);
+        }
+
+        function closeStatus() {
+            statusBox.classList.add('hidden');
+        }
+
+        // --- WebAuthn Simulation ---
+        async function authenticateWithBiometrics() {
+            if (!window.PublicKeyCredential) {
+                // สำหรับ Demo หากไม่รองรับ WebAuthn ให้รันผ่านเลย
+                return true; 
+            }
+            const username = empInput.value.trim() || "Employee";
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            try {
+                const assertion = await navigator.credentials.get({
+                    publicKey: {
+                        challenge: challenge,
+                        rpId: window.location.hostname || "localhost",
+                        userVerification: "required",
+                        timeout: 30000
+                    }
+                });
+                return true;
+            } catch (error) {
+                console.log("Get credential failed, attempting to create one for demo...", error);
+                try {
+                    const userId = new Uint8Array(16);
+                    window.crypto.getRandomValues(userId);
+                    const credential = await navigator.credentials.create({
+                        publicKey: {
+                            challenge: challenge,
+                            rp: { name: "System Security Demo", id: window.location.hostname || "localhost" },
+                            user: { id: userId, name: username, displayName: username },
+                            pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+                            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                            timeout: 30000
+                        }
+                    });
+                    return true; 
+                } catch (createError) {
+                    showStatus('error', 'การยืนยันตัวตนล้มเหลว', 'ไม่สามารถยืนยันตัวตนผ่านระบบรักษาความปลอดภัยได้');
+                    return false;
+                }
+            }
+        }
+
+        // --- Employee Interaction Logic ---
+        function validateInput() {
+            const empValue = empInput.value.trim();
+            if (!empValue) {
+                errorMsg.classList.remove('hidden');
+                empInput.focus();
+                empInput.classList.add('border-premium-accent', 'ring-1', 'ring-premium-accent');
+                return false;
+            }
+            errorMsg.classList.add('hidden');
+            empInput.classList.remove('border-premium-accent', 'ring-1', 'ring-premium-accent');
+            return true;
+        }
+
+        function handleLeaveClick() {
+            if (!validateInput()) return;
+            openModal();
+        }
+
+        function handleReturnClick() {
+            if (!activeSession) return;
+            handleActionWithBiometrics();
+        }
+
+        function openModal() {
+            confirmModal.classList.remove('hidden');
+            setTimeout(() => {
+                confirmModal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal() {
+            confirmModal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                confirmModal.classList.add('hidden');
+                btnConfirmModal.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg> ยืนยันด้วยใบหน้า / ลายนิ้วมือ`;
+                btnConfirmModal.disabled = false;
+            }, 300);
+        }
+
+        async function handleConfirmWithBiometrics() {
+            btnConfirmModal.disabled = true;
+            btnConfirmModal.innerHTML = `<span class="animate-pulse">กำลังตรวจสอบ...</span>`;
+            
+            const isAuthenticated = await authenticateWithBiometrics();
+            
+            if (isAuthenticated) {
+                closeModal();
+                showStatus('success', 'ยืนยันตัวตนสำเร็จ', `เริ่มจับเวลาของ ${empInput.value}`);
+                executeLeaveAction();
+            } else {
+                btnConfirmModal.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg> ลองสแกนอีกครั้ง`;
+                btnConfirmModal.disabled = false;
+            }
+        }
+
+        async function handleActionWithBiometrics() {
+            btnReturn.disabled = true;
+            btnReturn.innerHTML = `<span class="animate-pulse">กำลังตรวจสอบ...</span>`;
+            
+            // To properly mock returning, set input value to active session name temporarily
+            const currentInputValue = empInput.value;
+            empInput.value = activeSession.id;
+
+            const isAuthenticated = await authenticateWithBiometrics();
+            
+            if (isAuthenticated) {
+                showStatus('success', 'ยืนยันตัวตนสำเร็จ', `บันทึกเวลาเข้าของ ${activeSession.id} เรียบร้อยแล้ว`);
+                executeReturnAction();
+            } else {
+                empInput.value = currentInputValue; // Restore
+                btnReturn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> บันทึกเวลาเข้า`;
+                btnReturn.disabled = false;
+            }
+        }
+
+        // --- Core Tracking Logic ---
+        function executeLeaveAction() {
+            activeSession = {
+                id: empInput.value.trim(),
+                leaveTime: new Date()
+            };
+            saveData();
+            restoreActiveSession();
+        }
+
+        function restoreActiveSession() {
+            if (!activeSession) return;
+            empInput.value = activeSession.id;
+            empInput.disabled = true;
+            empInput.classList.add('opacity-50', 'cursor-not-allowed');
+            btnLeave.disabled = true;
+            btnReturn.disabled = false;
+            startTimer();
+        }
+
+        function executeReturnAction() {
+            if (!activeSession) return;
+
+            const returnTimeObj = new Date();
+            stopTimer();
+
+            const diffMs = returnTimeObj - activeSession.leaveTime;
+            const diffMins = Math.floor(diffMs / 1000 / 60);
+            const diffSecs = Math.floor((diffMs / 1000) % 60);
+            const durationDisplay = `${diffMins} นาที ${diffSecs} วินาที`;
+            const isWarning = (diffMs / 1000) >= 600; // 10 minutes limit
+            
+            const record = {
+                id: activeSession.id,
+                dateObj: new Date().toISOString(), // For Admin table grouping
+                leaveText: formatTime(activeSession.leaveTime),
+                returnText: formatTime(returnTimeObj),
+                durationText: durationDisplay,
+                isWarning: isWarning,
+                durationSeconds: Math.floor(diffMs / 1000)
+            };
+            historyData.unshift(record);
+
+            // Clear session and save
+            activeSession = null;
+            saveData();
+
+            // Render views
+            renderEmployeeHistory();
+            if(adminView.classList.contains('flex')) { renderAdminTable(); }
+
+            // Reset UI
+            empInput.value = ''; 
+            empInput.disabled = false;
+            empInput.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            btnLeave.disabled = false;
+            btnReturn.disabled = true;
+            btnReturn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> บันทึกเวลาเข้า`;
+        }
+
+        function startTimer() {
+            timerContainer.classList.remove('hidden');
+            timerDisplay.textContent = "00:00";
+            timerDisplay.classList.remove('text-premium-accent', 'animate-pulse-fast');
+            timerDisplay.classList.add('text-white');
+            timerWarning.classList.add('hidden');
+
+            timerInterval = setInterval(() => {
+                if(!activeSession) { stopTimer(); return; }
+                const now = new Date();
+                const diffSeconds = Math.floor((now - activeSession.leaveTime) / 1000);
+                
+                timerDisplay.textContent = formatDuration(diffSeconds);
+
+                if (diffSeconds >= 600 && !timerDisplay.classList.contains('text-premium-accent')) {
+                    timerDisplay.classList.remove('text-white');
+                    timerDisplay.classList.add('text-premium-accent', 'animate-pulse-fast');
+                    timerWarning.classList.remove('hidden');
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerContainer.classList.add('hidden');
+        }
+
+        function renderEmployeeHistory() {
+            if (historyData.length === 0) return;
+            historyTableBody.innerHTML = '';
+            
+            // Show only today's records (up to 5 for UI simplicity in employee view)
+            const today = new Date().toLocaleDateString('th-TH');
+            const todayRecords = historyData.filter(r => new Date(r.dateObj).toLocaleDateString('th-TH') === today).slice(0, 5);
+            
+            if (todayRecords.length === 0) {
+                 historyTableBody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500 italic">ยังไม่มีข้อมูลการบันทึกของวันนี้</td></tr>`;
+                 return;
+            }
+
+            todayRecords.forEach(record => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-premium-border/30 transition-colors border-b border-premium-border/50 last:border-0';
+                
+                const durationClass = record.isWarning ? 'text-premium-accent font-bold' : 'text-gray-300';
+                const warningIcon = record.isWarning ? `<span title="เกิน 10 นาที" class="text-premium-accent mr-1">⚠️</span>` : '';
+                
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-medium text-white">${record.id}</td>
+                    <td class="py-4 px-4 text-gray-400">${record.leaveText}</td>
+                    <td class="py-4 px-4 text-emerald-500">${record.returnText}</td>
+                    <td class="py-4 px-4 text-right ${durationClass}">${warningIcon}${record.durationText}</td>
+                `;
+                historyTableBody.appendChild(tr);
+            });
+        }
+
+        // --- Admin Dashboard Logic ---
+        function openAdminAuth() {
+            adminPin.value = '';
+            adminError.classList.add('hidden');
+            adminModal.classList.remove('hidden');
+            setTimeout(() => {
+                adminModal.classList.remove('opacity-0');
+                adminModalContent.classList.remove('scale-95');
+                adminPin.focus();
+            }, 10);
+        }
+
+        function closeAdminAuth() {
+            adminModal.classList.add('opacity-0');
+            adminModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                adminModal.classList.add('hidden');
+            }, 300);
+        }
+
+        function verifyAdminPin() {
+            if(adminPin.value === '9865') {
+                closeAdminAuth();
+                switchView('admin');
+            } else {
+                adminError.classList.remove('hidden');
+                adminPin.classList.add('border-premium-accent', 'ring-1', 'ring-premium-accent');
+                adminPin.value = '';
+                adminPin.focus();
+                setTimeout(() => {
+                     adminPin.classList.remove('border-premium-accent', 'ring-1', 'ring-premium-accent');
+                }, 500);
+            }
+        }
+        
+        // Listen for Enter key on PIN
+        adminPin.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                verifyAdminPin();
+            }
+        });
+
+        function switchView(viewName) {
+            if(viewName === 'admin') {
+                employeeView.classList.add('hidden');
+                employeeView.classList.remove('flex');
+                adminView.classList.remove('hidden');
+                adminView.classList.add('flex');
+                renderAdminTable();
+            } else {
+                adminView.classList.add('hidden');
+                adminView.classList.remove('flex');
+                employeeView.classList.remove('hidden');
+                employeeView.classList.add('flex');
+                renderEmployeeHistory();
+            }
+        }
+
+        function renderAdminTable() {
+            if (historyData.length === 0) {
+                 adminTableBody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-gray-500 italic">ไม่มีข้อมูลในระบบ</td></tr>`;
+                 document.getElementById('statTotal').innerHTML = `0 <span class="text-sm font-normal text-gray-500">ครั้ง</span>`;
+                 document.getElementById('statWarning').innerHTML = `0 <span class="text-sm font-normal text-gray-500">ครั้ง</span>`;
+                 return;
+            }
+
+            adminTableBody.innerHTML = '';
+            let warningsCount = 0;
+            
+            historyData.forEach(record => {
+                if(record.isWarning) warningsCount++;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-premium-border/50 transition-colors';
+                
+                const durationClass = record.isWarning ? 'text-premium-accent font-bold' : 'text-gray-300';
+                const rowClass = record.isWarning ? 'bg-red-900/10' : '';
+                
+                if(record.isWarning) tr.classList.add('bg-premium-red/5');
+
+                tr.innerHTML = `
+                    <td class="py-4 px-4 text-gray-400 border-b border-premium-border/50">${formatDate(new Date(record.dateObj))}</td>
+                    <td class="py-4 px-4 font-medium text-white border-b border-premium-border/50">${record.id}</td>
+                    <td class="py-4 px-4 text-gray-400 border-b border-premium-border/50">${record.leaveText}</td>
+                    <td class="py-4 px-4 text-emerald-500 border-b border-premium-border/50">${record.returnText}</td>
+                    <td class="py-4 px-4 text-right ${durationClass} border-b border-premium-border/50">${record.durationText}</td>
+                `;
+                adminTableBody.appendChild(tr);
+            });
+
+            document.getElementById('statTotal').innerHTML = `${historyData.length} <span class="text-sm font-normal text-gray-500">ครั้ง</span>`;
+            document.getElementById('statWarning').innerHTML = `${warningsCount} <span class="text-sm font-normal text-gray-500">ครั้ง</span>`;
+        }
+
+        function exportToCSV() {
+            if(historyData.length === 0) {
+                showStatus('warning', 'ไม่มีข้อมูล', 'ไม่มีข้อมูลสำหรับส่งออก');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Add BOM for Thai characters
+            csvContent += "Date,Employee ID/Name,Time Out,Time In,Duration (Seconds),Is Warning (>10m)\n";
+
+            historyData.forEach(record => {
+                const dateStr = new Date(record.dateObj).toLocaleDateString('th-TH');
+                // Escape quotes and wrap in quotes for safety
+                const idSafe = `"${record.id.replace(/"/g, '""')}"`;
+                csvContent += `${dateStr},${idSafe},${record.leaveText},${record.returnText},${record.durationSeconds},${record.isWarning ? 'Yes' : 'No'}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `HR_Scan_Report_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link); // Required for FF
+            
+            link.click();
+            document.body.removeChild(link);
+            showStatus('success', 'ดาวน์โหลดสำเร็จ', 'ส่งออกข้อมูลเป็นไฟล์ CSV เรียบร้อยแล้ว');
+        }
+    </script>
+</body>
+</html>
