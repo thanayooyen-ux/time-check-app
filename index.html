@@ -49,7 +49,7 @@
             <div class="flex justify-between items-end mb-2">
                 <label class="text-sm text-gray-400" data-i18n="inputLabel">รหัสพนักงาน / ชื่อ</label>
                 <div class="text-[10px] text-blue-400 flex items-center gap-1">
-                    <i class="fa-solid fa-fingerprint"></i> Protected
+                    <i class="fa-solid fa-location-dot"></i> + <i class="fa-solid fa-fingerprint"></i> Protected
                 </div>
             </div>
             <div class="relative">
@@ -67,10 +67,10 @@
         </div>
 
         <div class="flex flex-col gap-4">
-            <button onclick="prepareLog('out')" class="red-gradient w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_15px_rgba(139,0,0,0.4)] active:scale-95 transition-transform flex justify-center items-center gap-2">
+            <button onclick="checkLocationAndLog('out')" class="red-gradient w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_15px_rgba(139,0,0,0.4)] active:scale-95 transition-transform flex justify-center items-center gap-2">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="btnOut">บันทึกเวลาออก</span>
             </button>
-            <button onclick="prepareLog('in')" class="green-gradient w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_15px_rgba(0,100,0,0.4)] active:scale-95 transition-transform flex justify-center items-center gap-2">
+            <button onclick="checkLocationAndLog('in')" class="green-gradient w-full py-4 rounded-xl font-bold text-lg shadow-[0_4px_15px_rgba(0,100,0,0.4)] active:scale-95 transition-transform flex justify-center items-center gap-2">
                 <i class="fa-solid fa-house"></i> <span data-i18n="btnIn">บันทึกเวลาเข้า</span>
             </button>
         </div>
@@ -119,7 +119,7 @@
         </div>
     </div>
 
-    <!-- Modal: Admin Auth (omitted for brevity, keep the same as before) -->
+    <!-- Modal: Admin Auth -->
     <div id="adminAuthModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
         <div class="modal-overlay absolute w-full h-full bg-black/70 backdrop-blur-sm" onclick="closeModal('adminAuthModal')"></div>
         <div class="modal-container bg-[#1a1a1a] w-full max-w-sm mx-auto rounded-2xl shadow-2xl z-50 p-6 border border-gray-700 text-center">
@@ -158,12 +158,20 @@
     </div>
 
     <!-- Notification Toast -->
-    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 z-[100] flex items-center gap-2 border border-gray-600">
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 z-[100] flex items-center gap-2 border border-gray-600 whitespace-nowrap">
         <i id="toastIcon" class="fa-solid fa-info-circle"></i>
         <span id="toastMsg" class="text-sm font-medium"></span>
     </div>
 
     <script>
+        // ==========================================
+        // ตั้งค่าพิกัด GPS ของร้าน PGG5+CR Bangkok (ไอคอนสยาม)
+        // ==========================================
+        const STORE_LAT = 13.726749; 
+        const STORE_LNG = 100.510461; 
+        const MAX_DISTANCE_METERS = 5; 
+        // ==========================================
+
         // --- ระบบ 3 ภาษา (i18n) ---
         const translations = {
             th: {
@@ -173,7 +181,8 @@
                 modalDesc: '"แบบบันทึกสรุปการออกจากจุดปฏิบัติงานรายเดือน การบันทึกนี้มุ่งตรวจสอบการหนีงานหรือละทิ้งหน้าที่ในเวลาทำงาน ไม่ใช่การนับจำนวนครั้งการเข้าห้องน้ำอันเป็นความจำเป็นส่วนบุคคล"',
                 btnCancel: "ยกเลิก", btnConfirmFace: "ยืนยันด้วยใบหน้า", adminBtnClear: "ล้างข้อมูลทั้งหมด", adminBtnReset: "รีเซ็ตชื่อพนักงานที่จำไว้ในเครื่องนี้",
                 toastReqName: "กรุณากรอกรหัสหรือชื่อพนักงานก่อน", toastCancelFace: "ยกเลิกการสแกนใบหน้า", toastAuthFail: "เกิดข้อผิดพลาดในการยืนยันตัวตน",
-                toastOutSuccess: "บันทึกเวลาออกสำเร็จ", toastInSuccess: "บันทึกเวลาเข้าสำเร็จ", toastNoOut: "ไม่พบประวัติการบันทึกออกก่อนหน้านี้"
+                toastOutSuccess: "บันทึกเวลาออกสำเร็จ", toastInSuccess: "บันทึกเวลาเข้าสำเร็จ", toastNoOut: "ไม่พบประวัติการบันทึกออกก่อนหน้านี้",
+                toastCheckingLoc: "กำลังตรวจสอบพิกัด GPS...", toastGeoDenied: "กรุณาเปิด GPS และอนุญาตให้เว็บเข้าถึงตำแหน่ง", toastTooFar: "คุณอยู่ไกลจากร้านเกินไป ไม่สามารถบันทึกได้"
             },
             zh: {
                 appTitle: "工作区域计时系统", inputLabel: "员工号 / 姓名", inputPlaceholder: "输入员工号或姓名...", lockMsg: "设备已绑定此员工",
@@ -182,7 +191,8 @@
                 modalDesc: '"每月离岗总结记录。本记录旨在检查工作时间内的擅离职守行为，并非限制个人必要的如厕次数。"',
                 btnCancel: "取消", btnConfirmFace: "人脸识别确认", adminBtnClear: "清除所有数据", adminBtnReset: "重置此设备的绑定姓名",
                 toastReqName: "请先输入员工号或姓名", toastCancelFace: "取消了人脸识别", toastAuthFail: "身份验证失败",
-                toastOutSuccess: "离开记录成功", toastInSuccess: "返回记录成功", toastNoOut: "未找到先前的离开记录"
+                toastOutSuccess: "离开记录成功", toastInSuccess: "返回记录成功", toastNoOut: "未找到先前的离开记录",
+                toastCheckingLoc: "正在检查 GPS 位置...", toastGeoDenied: "请开启 GPS 并允许访问位置", toastTooFar: "距离店铺太远，无法打卡"
             },
             en: {
                 appTitle: "Work Area Time Tracker", inputLabel: "Employee ID / Name", inputPlaceholder: "Enter ID or Name...", lockMsg: "Device remembered this name",
@@ -191,7 +201,8 @@
                 modalDesc: '"Monthly area exit summary. This record aims to monitor absconding or abandoning duties during working hours, not counting restroom visits which are a personal necessity."',
                 btnCancel: "Cancel", btnConfirmFace: "Confirm with Face ID", adminBtnClear: "Clear All Data", adminBtnReset: "Reset saved name on this device",
                 toastReqName: "Please enter ID or Name first", toastCancelFace: "Face ID scan cancelled", toastAuthFail: "Authentication failed",
-                toastOutSuccess: "Clock out successful", toastInSuccess: "Clock in successful", toastNoOut: "No pending clock-out found"
+                toastOutSuccess: "Clock out successful", toastInSuccess: "Clock in successful", toastNoOut: "No pending clock-out found",
+                toastCheckingLoc: "Checking GPS location...", toastGeoDenied: "Please enable GPS and location access", toastTooFar: "You are too far from the store to clock in"
             }
         };
 
@@ -200,18 +211,10 @@
         function changeLang(lang) {
             currentLang = lang;
             localStorage.setItem('slk_lang', lang);
-            
-            // อัปเดต UI ปุ่มภาษา
             ['th', 'zh', 'en'].forEach(l => {
                 const btn = document.getElementById(`btnLang${l.toUpperCase()}`);
-                if (l === lang) {
-                    btn.className = "px-2 py-1 rounded text-white bg-red-900 font-bold transition-colors";
-                } else {
-                    btn.className = "px-2 py-1 rounded text-gray-400 hover:text-white transition-colors";
-                }
+                btn.className = l === lang ? "px-2 py-1 rounded text-white bg-red-900 font-bold transition-colors" : "px-2 py-1 rounded text-gray-400 hover:text-white transition-colors";
             });
-
-            // แปลภาษาข้อความทั้งหมด
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if(translations[lang][key]) el.innerHTML = translations[lang][key];
@@ -220,10 +223,9 @@
                 const key = el.getAttribute('data-i18n-ph');
                 if(translations[lang][key]) el.placeholder = translations[lang][key];
             });
-            renderHistory(); // รีเฟรชตารางเพื่ออัปเดตคำว่า นาที/วินาที (ถ้ามี)
+            renderHistory();
         }
 
-        // ฟังก์ชันช่วยดึงคำแปล
         function t(key) { return translations[currentLang][key] || key; }
 
         // --- ระบบจำชื่อพนักงาน ---
@@ -234,19 +236,15 @@
         function checkSavedName() {
             const savedName = localStorage.getItem('slk_saved_emp_name');
             if (savedName) {
-                nameInput.value = savedName;
-                nameInput.readOnly = true;
+                nameInput.value = savedName; nameInput.readOnly = true;
                 nameInput.classList.add('bg-neutral-800', 'text-gray-500', 'cursor-not-allowed');
                 nameInput.classList.remove('bg-[#2a2a2a]', 'text-white');
-                lockIcon.classList.remove('hidden');
-                nameLockedMsg.classList.remove('hidden');
+                lockIcon.classList.remove('hidden'); nameLockedMsg.classList.remove('hidden');
             } else {
-                nameInput.value = '';
-                nameInput.readOnly = false;
+                nameInput.value = ''; nameInput.readOnly = false;
                 nameInput.classList.remove('bg-neutral-800', 'text-gray-500', 'cursor-not-allowed');
                 nameInput.classList.add('bg-[#2a2a2a]', 'text-white');
-                lockIcon.classList.add('hidden');
-                nameLockedMsg.classList.add('hidden');
+                lockIcon.classList.add('hidden'); nameLockedMsg.classList.add('hidden');
             }
             updateLiveTimer();
         }
@@ -257,59 +255,80 @@
             const savedName = localStorage.getItem('slk_saved_emp_name');
             const timerContainer = document.getElementById('liveTimerContainer');
             const timerText = document.getElementById('liveTimerText');
-            
-            clearInterval(timerInterval); // เคลียร์ของเก่าก่อน
-            
-            if (!savedName) {
-                timerContainer.classList.add('hidden');
-                return;
-            }
+            clearInterval(timerInterval);
+            if (!savedName) { timerContainer.classList.add('hidden'); return; }
 
             const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
-            // หา record ที่ยังไม่ได้เข้า ของคนนี้
             const activeLog = logs.slice().reverse().find(log => log.name === savedName && log.timeIn === '-');
 
             if (activeLog) {
                 timerContainer.classList.remove('hidden');
                 timerInterval = setInterval(() => {
-                    const now = new Date().getTime();
-                    const diffMs = now - activeLog.timeOutRaw;
+                    const diffMs = new Date().getTime() - activeLog.timeOutRaw;
                     const diffMins = Math.floor(diffMs / 60000);
                     const diffSecs = Math.floor((diffMs % 60000) / 1000);
-                    
                     timerText.innerText = `${String(diffMins).padStart(2, '0')}:${String(diffSecs).padStart(2, '0')}`;
-                    
                     if (diffMins >= 10) {
-                        timerText.classList.remove('text-green-400', 'timer-glow');
-                        timerText.classList.add('text-red-500', 'timer-glow-red');
+                        timerText.classList.remove('text-green-400', 'timer-glow'); timerText.classList.add('text-red-500', 'timer-glow-red');
                     } else {
-                        timerText.classList.add('text-green-400', 'timer-glow');
-                        timerText.classList.remove('text-red-500', 'timer-glow-red');
+                        timerText.classList.add('text-green-400', 'timer-glow'); timerText.classList.remove('text-red-500', 'timer-glow-red');
                     }
                 }, 1000);
-            } else {
-                timerContainer.classList.add('hidden');
-            }
+            } else { timerContainer.classList.add('hidden'); }
         }
 
-        // --- ระบบทำงานหลัก ---
         let currentAction = '';
         const ADMIN_PIN = '9865';
 
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             document.getElementById('toastMsg').innerText = message;
-            toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg transition-opacity duration-300 z-[100] flex items-center gap-2 border ${type === 'error' ? 'bg-red-900 border-red-700 text-white' : 'bg-green-900 border-green-700 text-white'}`;
-            document.getElementById('toastIcon').className = type === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check';
+            toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg transition-opacity duration-300 z-[100] flex items-center gap-2 border ${type === 'error' ? 'bg-red-900 border-red-700 text-white' : type === 'info' ? 'bg-blue-900 border-blue-700 text-white' : 'bg-green-900 border-green-700 text-white'}`;
+            document.getElementById('toastIcon').className = type === 'error' ? 'fa-solid fa-circle-xmark' : type === 'info' ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-circle-check';
             toast.style.opacity = '1';
-            setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+            setTimeout(() => { toast.style.opacity = '0'; }, type === 'info' ? 5000 : 3000);
         }
 
-        function prepareLog(action) {
+        // --- ระบบคำนวณระยะทาง GPS ---
+        function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // รัศมีโลก (เมตร)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; 
+        }
+
+        // --- เช็ค GPS ก่อนบันทึก ---
+        function checkLocationAndLog(action) {
             const name = document.getElementById('employeeName').value.trim();
             if (!name) { showToast(t('toastReqName'), 'error'); return; }
-            currentAction = action;
-            openModal('policyModal');
+
+            if (!navigator.geolocation) {
+                showToast(t('toastGeoDenied'), 'error'); return;
+            }
+
+            showToast(t('toastCheckingLoc'), 'info');
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    const distance = getDistanceFromLatLonInM(STORE_LAT, STORE_LNG, userLat, userLng);
+
+                    if (distance <= MAX_DISTANCE_METERS) {
+                        currentAction = action;
+                        document.getElementById('toast').style.opacity = '0';
+                        openModal('policyModal');
+                    } else {
+                        showToast(`${t('toastTooFar')} (${Math.floor(distance)}m)`, 'error');
+                    }
+                },
+                (error) => {
+                    showToast(t('toastGeoDenied'), 'error');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
 
         async function authenticateAndSave() {
@@ -317,29 +336,21 @@
             try {
                 if(window.PublicKeyCredential) {
                     try {
-                        const challenge = new Uint8Array(32);
-                        window.crypto.getRandomValues(challenge);
+                        const challenge = new Uint8Array(32); window.crypto.getRandomValues(challenge);
                         await navigator.credentials.create({
                             publicKey: {
-                                challenge: challenge,
-                                rp: { name: "SLK App", id: window.location.hostname },
+                                challenge: challenge, rp: { name: "SLK App", id: window.location.hostname },
                                 user: { id: new Uint8Array(16), name: "emp", displayName: "Emp" },
                                 pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-                                authenticatorSelection: { userVerification: "required" },
-                                timeout: 60000
+                                authenticatorSelection: { userVerification: "required" }, timeout: 60000
                             }
                         });
                     } catch (e) {
-                        if(e.name === 'NotAllowedError') {
-                            showToast(t('toastCancelFace'), 'error');
-                            return;
-                        }
+                        if(e.name === 'NotAllowedError') { showToast(t('toastCancelFace'), 'error'); return; }
                     }
                 }
                 saveLog();
-            } catch (err) {
-                showToast(t('toastAuthFail'), 'error');
-            }
+            } catch (err) { showToast(t('toastAuthFail'), 'error'); }
         }
 
         function formatDuration(diffMins, diffSecs) {
@@ -353,71 +364,40 @@
             const now = new Date();
             const timeString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const dateString = now.toLocaleDateString('en-GB');
-
             let logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
 
             if (currentAction === 'out') {
-                // เช็คว่ากดออกซ้ำซ้อนไหม
                 const activeLog = logs.slice().reverse().find(log => log.name === name && log.timeIn === '-');
                 if(!activeLog) {
                     logs.push({ id: Date.now(), name: name, date: dateString, timeOut: timeString, timeOutRaw: now.getTime(), timeIn: '-', timeInRaw: null, duration: '-' });
                     showToast(`${t('toastOutSuccess')}: ${timeString}`);
-                } else {
-                    showToast('กำลังจับเวลาอยู่แล้ว / Timer is already running', 'error');
-                    return;
-                }
+                } else { showToast('กำลังจับเวลาอยู่แล้ว / Timer is already running', 'error'); return; }
             } else if (currentAction === 'in') {
                 const openLogIndex = logs.slice().reverse().findIndex(log => log.name === name && log.timeIn === '-');
                 if (openLogIndex !== -1) {
                     const actualIndex = logs.length - 1 - openLogIndex;
                     const diffMs = now.getTime() - logs[actualIndex].timeOutRaw;
-                    const diffMins = Math.floor(diffMs / 60000);
-                    const diffSecs = Math.floor((diffMs % 60000) / 1000);
-                    
-                    logs[actualIndex].timeIn = timeString;
-                    logs[actualIndex].timeInRaw = now.getTime();
-                    logs[actualIndex].durationMins = diffMins; // เก็บค่าดิบไว้
-                    logs[actualIndex].durationSecs = diffSecs; 
+                    const diffMins = Math.floor(diffMs / 60000); const diffSecs = Math.floor((diffMs % 60000) / 1000);
+                    logs[actualIndex].timeIn = timeString; logs[actualIndex].timeInRaw = now.getTime();
+                    logs[actualIndex].durationMins = diffMins; logs[actualIndex].durationSecs = diffSecs; 
                     logs[actualIndex].isOvertime = diffMins >= 10;
-                    
                     showToast(`${t('toastInSuccess')}: ${timeString}`);
-                } else {
-                    showToast(t('toastNoOut'), 'error');
-                    return;
-                }
+                } else { showToast(t('toastNoOut'), 'error'); return; }
             }
 
             localStorage.setItem('slk_time_logs', JSON.stringify(logs));
-            
-            if (!localStorage.getItem('slk_saved_emp_name')) {
-                localStorage.setItem('slk_saved_emp_name', name);
-                checkSavedName();
-            }
-
-            updateLiveTimer(); // สั่งรีเฟรช Live Timer ทันที
-            renderHistory();
+            if (!localStorage.getItem('slk_saved_emp_name')) { localStorage.setItem('slk_saved_emp_name', name); checkSavedName(); }
+            updateLiveTimer(); renderHistory();
         }
 
         function renderHistory() {
             const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
-            const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '';
-            const recentLogs = logs.slice(-5).reverse();
-
-            recentLogs.forEach(log => {
+            const tbody = document.getElementById('historyTableBody'); tbody.innerHTML = '';
+            logs.slice(-5).reverse().forEach(log => {
                 const tr = document.createElement('tr');
                 const durationClass = log.isOvertime ? 'text-red-500 font-bold' : 'text-gray-300';
-                let displayDuration = log.duration;
-                if(log.timeIn !== '-') {
-                    displayDuration = formatDuration(log.durationMins, log.durationSecs);
-                }
-
-                tr.innerHTML = `
-                    <td class="py-3 truncate max-w-[80px]">${log.name}</td>
-                    <td class="py-3">${log.timeOut}</td>
-                    <td class="py-3 text-green-400">${log.timeIn}</td>
-                    <td class="py-3 text-right ${durationClass}">${displayDuration}</td>
-                `;
+                let displayDuration = log.timeIn !== '-' ? formatDuration(log.durationMins, log.durationSecs) : log.duration;
+                tr.innerHTML = `<td class="py-3 truncate max-w-[80px]">${log.name}</td><td class="py-3">${log.timeOut}</td><td class="py-3 text-green-400">${log.timeIn}</td><td class="py-3 text-right ${durationClass}">${displayDuration}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -427,14 +407,11 @@
         function closeModal(modalID) { document.getElementById(modalID).classList.add('opacity-0', 'pointer-events-none'); document.body.classList.remove('modal-active'); if(modalID === 'adminAuthModal') document.getElementById('adminPin').value = ''; }
         function openAdminAuth() { openModal('adminAuthModal'); document.getElementById('adminPin').focus(); }
         function checkAdminPin() {
-            if (document.getElementById('adminPin').value === ADMIN_PIN) {
-                closeModal('adminAuthModal'); openModal('adminDashboardModal'); renderAdminTable();
-            } else { showToast('รหัส PIN ไม่ถูกต้อง / Incorrect PIN', 'error'); }
+            if (document.getElementById('adminPin').value === ADMIN_PIN) { closeModal('adminAuthModal'); openModal('adminDashboardModal'); renderAdminTable(); } else { showToast('รหัส PIN ไม่ถูกต้อง / Incorrect PIN', 'error'); }
         }
         function renderAdminTable() {
             const logs = JSON.parse(localStorage.getItem('slk_time_logs')) || [];
-            const tbody = document.getElementById('adminTableBody');
-            tbody.innerHTML = '';
+            const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
             logs.slice().reverse().forEach(log => {
                 const tr = document.createElement('tr');
                 let displayDuration = log.timeIn !== '-' ? formatDuration(log.durationMins, log.durationSecs) : '-';
@@ -449,17 +426,11 @@
             const link = document.createElement("a"); link.href = encodeURI(csvContent); link.download = `SLK_Time_Logs.csv`;
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
-        function clearAllData() {
-            if(confirm('ลบประวัติการสแกนทั้งหมด? / Clear all data?')) { localStorage.removeItem('slk_time_logs'); renderHistory(); renderAdminTable(); showToast('ล้างข้อมูลสำเร็จ'); updateLiveTimer(); }
-        }
-        function resetSavedName() {
-            if(confirm('ปลดล็อกช่องกรอกชื่อ? / Reset saved name?')) { localStorage.removeItem('slk_saved_emp_name'); checkSavedName(); closeModal('adminDashboardModal'); showToast('ปลดล็อกชื่อสำเร็จ'); }
-        }
+        function clearAllData() { if(confirm('ลบประวัติการสแกนทั้งหมด? / Clear all data?')) { localStorage.removeItem('slk_time_logs'); renderHistory(); renderAdminTable(); showToast('ล้างข้อมูลสำเร็จ'); updateLiveTimer(); } }
+        function resetSavedName() { if(confirm('ปลดล็อกช่องกรอกชื่อ? / Reset saved name?')) { localStorage.removeItem('slk_saved_emp_name'); checkSavedName(); closeModal('adminDashboardModal'); showToast('ปลดล็อกชื่อสำเร็จ'); } }
 
         // Init
-        changeLang(currentLang);
-        checkSavedName();
-        renderHistory();
+        changeLang(currentLang); checkSavedName(); renderHistory();
     </script>
 </body>
 </html>
